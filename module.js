@@ -3,7 +3,7 @@ module.exports = function(config) {
 };
 
 function RedisMessenger(config) {
-	console.log("TEST");
+	console.log(config);
 
 }
 
