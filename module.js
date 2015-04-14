@@ -30,8 +30,9 @@ RedisMessenger.prototype.pub = function(params, callback) {
 RedisMessenger.prototype.createClient = function(config, callback) {
 	var client = redis.createClient(config.port, config.host, {});
 	client.auth(config.password, function(error, response) {
-		if(error)
+		if (error)
 			callback(error, null);
 		else
 			callback(null, true);
+	});
 };
