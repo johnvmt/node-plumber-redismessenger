@@ -5,27 +5,72 @@ module.exports = function(config) {
 var redis = require("redis");
 
 function RedisMessenger(config) {
+	var self = this;
 
-	this.pubClient = this.createClient(config, function(error, response) {
+	self.publishQueue = [];
+	self.subscribeQueue = [];
+
+	self.pubLoaded = false;
+	self.pubClient = this.createClient(config, function(error, response) {
 		if(error)
 			console.log("pub create error");
-		else
+		else {
+			self.pubLoaded = true;
+			self.publishQueue.forEach(function(queueItem) {
+				self.publish(queueItem.channel, queueItem.message, queueItem.callback);
+			});
+			delete self.publishQueue;
 			console.log("pub create success");
+		}
 	});
 
-	this.subClient = this.createClient(config, function(error, response) {
+	self.subCallbacks = {};
+
+	self.subLoaded = false;
+	self.subClient = this.createClient(config, function(error, response) {
 		if(error)
-			console.log("pub create error");
-		else
-			console.log("pub create success");
+			console.log("sub create error");
+		else {
+			self.subLoaded = true;
+			self.subscribeQueue.forEach(function(queueItem) {
+				self.subscribe(queueItem.channel, queueItem.subCallback, queueItem.callback);
+			});
+			delete self.publishQueue;
+			console.log("sub create success");
+		}
 	});
 }
 
+RedisMessenger.prototype.publish = function(channel, message, callback) {
+	if(this.pubLoaded) {
+		console.log("Publishing");
+		this.pubClient.publish(channel, message);
+		callback(null, true);
+	}
+	else
+		this.publishQueue.push({channel: channel, message: message, callback: callback});
+};
 
-RedisMessenger.prototype.pub = function(params, callback) {
+RedisMessenger.prototype.subscribe = function(channel, subCallback, callback) {
+	if(this.subLoaded) {
+		this.subClient.subscribe(channel);
+		this.subCallbacks[channel] = subCallback;
+		var subCallbacks = this.subCallbacks;
+		this.subClient.on("message", function(channel, message) {
+			if(typeof subCallbacks[channel] === "function")
+				subCallbacks[channel](message);
+		});
+		callback(null, true);
+	}
+	else
+		this.subscribeQueue.push({channel: channel, subCallback: subCallback, callback: callback});
+};
 
+RedisMessenger.prototype.unsubscribe = function(channel, callback) {
 
 };
+
+
 
 RedisMessenger.prototype.createClient = function(config, callback) {
 	var client = redis.createClient(config.port, config.host, {});
