@@ -5,37 +5,38 @@ module.exports = function(config) {
 var redis = require("redis");
 
 function RedisMessenger(config) {
-	var self = this;
 
-	self.publishQueue = [];
-	self.subscribeQueue = [];
+	this.publishQueue = [];
+	this.subscribeQueue = [];
 
-	self.pubLoaded = false;
-	self.pubClient = this.createClient(config, function(error, response) {
+	this.pubLoaded = false;
+	this.pubClient = this.createClient(config, function(error, response) {
 		if(error)
 			console.log("pub create error");
 		else {
-			self.pubLoaded = true;
-			self.publishQueue.forEach(function(queueItem) {
-				self.publish(queueItem.channel, queueItem.message, queueItem.callback);
-			});
-			delete self.publishQueue;
+			this.pubLoaded = true;
+			while(this.publishQueue.length > 0) {
+				var queueItem = this.publishQueue.shift();
+				this.publish(queueItem.channel, queueItem.message, queueItem.callback);
+			}
+			delete this.publishQueue;
 			console.log("pub create success");
 		}
 	});
 
-	self.subCallbacks = {};
+	this.subCallbacks = {};
 
-	self.subLoaded = false;
-	self.subClient = this.createClient(config, function(error, response) {
+	this.subLoaded = false;
+	this.subClient = this.createClient(config, function(error, response) {
 		if(error)
 			console.log("sub create error");
 		else {
-			self.subLoaded = true;
-			self.subscribeQueue.forEach(function(queueItem) {
-				self.subscribe(queueItem.channel, queueItem.subCallback, queueItem.callback);
-			});
-			delete self.publishQueue;
+			this.subLoaded = true;
+			while(this.subscribeQueue.length > 0) {
+				var queueItem = this.subscribeQueue.shift();
+				this.subscribe(queueItem.channel, queueItem.subCallback, queueItem.callback);
+			}
+			delete this.publishQueue;
 			console.log("sub create success");
 		}
 	});
