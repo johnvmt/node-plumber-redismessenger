@@ -41,8 +41,6 @@ function RedisMessenger(config) {
 			console.log("sub create success");
 		}
 	});
-
-	console.log(this);
 }
 
 RedisMessenger.prototype.publish = function(channel, message, callback) {
