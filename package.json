@@ -1,0 +1,11 @@
+{
+  "name": "node-plumber-redismessenger",
+  "version": "0.0.1",
+  "engines": {
+    "node": ">=0.8.9"
+  },
+  "dependencies": {
+
+  },
+  "main": "./module.js"
+}
