@@ -55,7 +55,7 @@ RedisMessenger.prototype.publish = function(channel, message, callback) {
 
 RedisMessenger.prototype.subscribe = function(channel, subCallback, callback) {
 	if(this.subLoaded) {
-		console.log(this);
+		//console.log(this);
 		this.subClient.subscribe(channel);
 		this.subCallbacks[channel] = subCallback;
 		var subCallbacks = this.subCallbacks;
