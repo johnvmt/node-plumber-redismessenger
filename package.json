@@ -6,7 +6,8 @@
   },
   "dependencies": {
     "redis": "0.12.x",
-    "hiredis": "0.3.x"
+    "hiredis": "0.3.x",
+    "path": "*"
   },
   "main": "./module.js"
 }
