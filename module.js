@@ -1,10 +1,10 @@
-module.exports = function(config) {
-	return new RedisMessenger(config);
+module.exports = function(plumber, config) {
+	return new RedisMessenger(plumber, config);
 };
 
 var redis = require("redis");
 
-function RedisMessenger(config) {
+function RedisMessenger(plumber, config) {
 	var self = this;
 
 	self.publishQueue = [];
