@@ -6,74 +6,82 @@ var redis = require("redis");
 
 function RedisMessenger(plumber, config) {
 	var self = this;
+	self.plumber = plumber;
 
-	self.publishQueue = [];
-	self.subscribeQueue = [];
+	self.messageCallbacks = {};
+	self.channelCallbacks = {};
 
-	self.pubLoaded = false;
-	self.pubClient = self.createClient(config, function(error, response) {
+	if(typeof config.prefix != "string")
+		self.prefix = "";
+	else
+		self.prefix = config.prefix;
+
+	self.pubClient = self._createClient(config.auth, function(error, response) {
 		if(error)
-			console.log("pub create error");
-		else {
-			self.pubLoaded = true;
-			while(self.publishQueue.length > 0) {
-				var queueItem = self.publishQueue.shift();
-				self.publish(queueItem.channel, queueItem.message, queueItem.callback);
-			}
-			delete self.publishQueue;
+			console.error("pub create error");
+		else
 			console.log("pub create success");
+	});
+
+	self.subClient = self._createClient(config.auth, function(error, response) {
+		if(error)
+			console.error("sub create error");
+		else
+			console.log("sub create success");
+	});
+
+	self.subClient.on("subscribe", function (channel) {
+		if(typeof self.channelCallbacks[channel] === "function") {
+			self.channelCallbacks[channel](null, true);
 		}
 	});
 
-	self.subCallbacks = {};
-
-	self.subLoaded = false;
-	self.subClient = self.createClient(config, function(error, response) {
-		if(error)
-			console.log("sub create error");
-		else {
-			self.subLoaded = true;
-			while(self.subscribeQueue.length > 0) {
-				var queueItem = self.subscribeQueue.shift();
-				self.subscribe(queueItem.channel, queueItem.subCallback, queueItem.callback);
+	self.subClient.on("message", function (channel, jsonMessage) {
+		if(typeof self.messageCallbacks[channel] === "function") {
+			try {
+				var message = JSON.parse(jsonMessage);
+				self.messageCallbacks[channel](message.body, message);
 			}
-			delete self.subscribeQueue;
-			console.log("sub create success");
+			catch(error) {
+				console.error("Message could not be parsed");
+			}
 		}
 	});
 }
 
-RedisMessenger.prototype.publish = function(channel, message, callback) {
-	if(this.pubLoaded) {
-		console.log("Publishing");
-		this.pubClient.publish(channel, message);
-		callback(null, true);
-	}
-	else
-		this.publishQueue.push({channel: channel, message: message, callback: callback});
+RedisMessenger.prototype.publish = function(channel, body, callback) {
+	var self = this;
+	self.plumber.infrastructure.platform.instanceId(function(error, instanceId) {
+		if(error)
+			callback(error, null);
+		else {
+			var jsonMessage = JSON.stringify({
+				body: body,
+				instanceId: instanceId,
+				time: new Date()
+			});
+			self.pubClient.publish(channel, jsonMessage);
+			if (typeof callback === "function")
+				callback(null, true);
+		}
+	});
 };
 
-RedisMessenger.prototype.subscribe = function(channel, subCallback, callback) {
-	if(this.subLoaded) {
-		//console.log(this);
-		this.subClient.subscribe(channel);
-		this.subCallbacks[channel] = subCallback;
-		var subCallbacks = this.subCallbacks;
-		this.subClient.on("message", function(channel, message) {
-			if(typeof subCallbacks[channel] === "function")
-				subCallbacks[channel](message);
-		});
-		callback(null, true);
-	}
-	else
-		this.subscribeQueue.push({channel: channel, subCallback: subCallback, callback: callback});
+RedisMessenger.prototype.subscribe = function(channel, messageCallback, subscribeCallback) {
+	var self = this;
+	self.messageCallbacks[channel] = messageCallback; // handle incoming messages on this channel
+	if(typeof subscribeCallback === "function")
+		self.channelCallbacks[channel] = subscribeCallback; // triggered when subscription becomes active
+	self.subClient.subscribe(channel);
 };
 
 RedisMessenger.prototype.unsubscribe = function(channel, callback) {
-
+	// TODO test this
+	this.subClient.unsubscribe(channel);
+	callback(null, true);
 };
 
-RedisMessenger.prototype.createClient = function(config, callback) {
+RedisMessenger.prototype._createClient = function(config, callback) {
 	var client = redis.createClient(config.port, config.host, {});
 	client.auth(config.password, function(error, response) {
 		if (error)
