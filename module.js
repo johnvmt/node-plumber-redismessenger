@@ -60,7 +60,7 @@ RedisMessenger.prototype.publish = function(channel, body, callback) {
 				instanceId: instanceId,
 				time: new Date()
 			});
-			self.pubClient.publish(channel, jsonMessage);
+			self.pubClient.publish(self.prefix + channel, jsonMessage);
 			if (typeof callback === "function")
 				callback(null, true);
 		}
@@ -69,10 +69,10 @@ RedisMessenger.prototype.publish = function(channel, body, callback) {
 
 RedisMessenger.prototype.subscribe = function(channel, messageCallback, subscribeCallback) {
 	var self = this;
-	self.messageCallbacks[channel] = messageCallback; // handle incoming messages on this channel
+	self.messageCallbacks[self.prefix + channel] = messageCallback; // handle incoming messages on this channel
 	if(typeof subscribeCallback === "function")
-		self.channelCallbacks[channel] = subscribeCallback; // triggered when subscription becomes active
-	self.subClient.subscribe(channel);
+		self.channelCallbacks[self.prefix + channel] = subscribeCallback; // triggered when subscription becomes active
+	self.subClient.subscribe(self.prefix + channel);
 };
 
 RedisMessenger.prototype.unsubscribe = function(channel, callback) {
