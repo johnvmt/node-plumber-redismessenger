@@ -61,6 +61,7 @@ RedisMessenger.prototype.publish = function(channel, body, callback) {
 				time: new Date()
 			});
 			self.pubClient.publish(self.prefix + channel, jsonMessage);
+			console.log("SENDING", jsonMessage);
 			if (typeof callback === "function")
 				callback(null, true);
 		}
